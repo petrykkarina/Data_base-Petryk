@@ -1,0 +1,17 @@
+app:
+  name: "E-Commerce API"
+  version: "1.0.0"
+  description: "Flask Backend for E-Commerce Database"
+
+server:
+  host: "0.0.0.0"
+  port: 5000
+  debug: true
+
+database:
+  host: "localhost"
+  port: 3306
+  user: "root"
+  password: "1009"
+  name: "rozetka_db"
+
