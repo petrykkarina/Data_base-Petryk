@@ -8,13 +8,11 @@ class Config:
     DEBUG = True
     TESTING = False
 
-    # --- ВАШІ НАЛАШТУВАННЯ (ЗМІНЮЙТЕ ТУТ) ---
     MYSQL_HOST = "localhost"
     MYSQL_USER = "root"
-    MYSQL_PASSWORD = "1009"  # <--- Ваш пароль тепер точно спрацює
+    MYSQL_PASSWORD = "1009" 
     MYSQL_DB = "rozetka_db"
     MYSQL_PORT = 3306
-    # ----------------------------------------
 
     _connection_pool = None
 
