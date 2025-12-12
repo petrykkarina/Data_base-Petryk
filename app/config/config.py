@@ -17,6 +17,18 @@ class Config:
     _connection_pool = None
 
     @classmethod
+    def get_db_connection(cls):
+        return mysql.connector.connect(
+            host=cls.MYSQL_HOST,
+            user=cls.MYSQL_USER,
+            password=cls.MYSQL_PASSWORD,
+            database=cls.MYSQL_DB,
+            port=cls.MYSQL_PORT,
+            auth_plugin='mysql_native_password'
+        )
+
+
+    @classmethod
     def load_from_yaml(cls, yaml_path=None):
         """
         Ми вимкнули завантаження з YAML, щоб пароль точно брався з коду вище.
@@ -54,14 +66,16 @@ class Config:
         # Перевіряємо, чи існує пул, щоб не створювати зайві
         if cls._connection_pool is None:
             cls._connection_pool = pooling.MySQLConnectionPool(
-                pool_name="mypool",
-                pool_size=5,
-                host=cls.MYSQL_HOST,
-                user=cls.MYSQL_USER,
-                password=cls.MYSQL_PASSWORD,
-                database=cls.MYSQL_DB,
-                port=cls.MYSQL_PORT
+                 pool_name="mypool",
+                 pool_size=5,
+                 host=cls.MYSQL_HOST,
+                 user=cls.MYSQL_USER,
+                 password=cls.MYSQL_PASSWORD,
+                 database=cls.MYSQL_DB,
+                 port=cls.MYSQL_PORT,
+                 auth_plugin='mysql_native_password'
             )
+
 
     @classmethod
     def get_connection(cls):
@@ -70,13 +84,4 @@ class Config:
             cls.init_connection_pool()
         return cls._connection_pool.get_connection()
 
-    @classmethod
-    def get_db_connection(cls):
-        """Get a direct database connection"""
-        return mysql.connector.connect(
-            host=cls.MYSQL_HOST,
-            user=cls.MYSQL_USER,
-            password=cls.MYSQL_PASSWORD,
-            database=cls.MYSQL_DB,
-            port=cls.MYSQL_PORT
-        )
+   
