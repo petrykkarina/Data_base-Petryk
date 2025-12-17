@@ -1,105 +1,107 @@
-"""
-Rozetka Flask Backend Application
-Main entry point for the application
-"""
+from flask import Flask, request, jsonify
+import pymysql
 
-from app import create_app
-from flask import Flask, jsonify, request
-from app.config.config import Config
+app = Flask(__name__)
 
-app = create_app()
+def get_db_connection():
+    return pymysql.connect(
+        host='localhost',
+        user='root',
+        password='1009',
+        database='rozetka_db'
+    )
 
-@app.route('/api/roles/<int:id>/details', methods=['GET'])
-def get_role_with_users(id):
-    connection = None
+@app.route('/add_product', methods=['POST'])
+def add_product():
+    data = request.json
+    name = data.get('name')
+    price = data.get('price')
+    description = data.get('description')
+    
+    connection = get_db_connection()
     try:
-        connection = Config.get_connection()
-        cursor = connection.cursor(dictionary=True)
-
-        # 1. Отримуємо роль
-        cursor.execute("SELECT * FROM roles WHERE role_id = %s", (id,))
-        role = cursor.fetchone()
-
-        if not role:
-            return jsonify({"error": "Role not found"}), 404
-
-        # 2. Отримуємо користувачів (ТУТ БУЛА ПОМИЛКА)
-        # Використовуємо SELECT *, щоб не вгадувати назви (username/user_name тощо)
-        cursor.execute("SELECT * FROM users WHERE role_id = %s", (id,))
-        users = cursor.fetchall()
-
-        response_data = {
-            "role_info": role,
-            "users_list": users,
-            "total_users": len(users)
-        }
-
-        return jsonify(response_data), 200
-
+        with connection.cursor() as cursor:
+            cursor.callproc('sp_add_product', (name, price, description))
+        connection.commit()
+        return jsonify({'message': 'Product added successfully'}), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({'error': str(e)}), 500
     finally:
-        if connection:
-            if 'cursor' in locals() and cursor:
-                cursor.close()
-            connection.close()
+        connection.close()
 
-@app.route('/api/orders/<int:order_id>/products', methods=['GET'])
-def get_order_products_mm(order_id):
-    connection = None
+@app.route('/orders/add-item', methods=['POST'])
+def add_order_item():
+    data = request.json
+    order_id = data.get('order_id')
+    product_name = data.get('product_name')
+    quantity = data.get('quantity')
+    
+    connection = get_db_connection()
     try:
-        connection = Config.get_connection()
-        cursor = connection.cursor(dictionary=True)
-
-        cursor.execute("SELECT * FROM orders WHERE order_id = %s", (order_id,))
-        order = cursor.fetchone()
-
-        if not order:
-            return jsonify({"error": "Order not found"}), 404
-
-        sql = """
-        SELECT p.* FROM products p
-        JOIN order_items oi ON p.product_id = oi.product_id
-        WHERE oi.order_id = %s
-        """
-        cursor.execute(sql, (order_id,))
-        products = cursor.fetchall()
-
-        response_data = {
-            "order_info": order,
-            "products_list": products,
-            "total_products": len(products)
-        }
-
-        return jsonify(response_data), 200
-
+        with connection.cursor() as cursor:
+            cursor.callproc('sp_add_product_to_order_by_name', (order_id, product_name, quantity))
+        connection.commit()
+        return jsonify({'message': 'Product added to order successfully'}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({'error': str(e)}), 500
     finally:
-        if connection:
-            if 'cursor' in locals() and cursor:
-                cursor.close()
-            connection.close()
+        connection.close()
+
+@app.route('/users/insert-nonames', methods=['POST'])
+def insert_nonames():
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.callproc('sp_insert_nonames')
+        connection.commit()
+        return jsonify({'message': 'Inserted 10 Noname users successfully'}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        connection.close()
+
+@app.route('/products/avg-price', methods=['GET'])
+def get_avg_price():
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT fn_get_avg_product_price()")
+            result = cursor.fetchone()
+        return jsonify({'mode': 'AVG', 'result': float(result[0])}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        connection.close()
+
+@app.route('/products/split', methods=['POST'])
+def split_products():
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.callproc('sp_dynamic_split_products')
+        connection.commit()
+        return jsonify({'message': 'Products split into dynamic tables successfully'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        connection.close()
+
+@app.route('/products/add-note', methods=['POST'])
+def add_product_note():
+    data = request.json
+    product_id = data.get('product_id')
+    note_text = data.get('note_text')
+    
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("INSERT INTO product_notes (product_id, note_text) VALUES (%s, %s)", (product_id, note_text))
+        connection.commit()
+        return jsonify({'message': 'Note added successfully'}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        connection.close()
 
 if __name__ == '__main__':
-    print("=" * 50)
-    print("Rozetka API Server")
-    print("=" * 50)
-    print("Available endpoints:")
-    print("  GET    /api/roles              - Get all roles")
-    print("  GET    /api/users              - Get all users")
-    print("  GET    /api/categories         - Get all categories")
-    print("  GET    /api/subcategories      - Get all subcategories")
-    print("  GET    /api/products           - Get all products")
-    print("  GET    /api/product-attributes - Get all product attributes")
-    print("  GET    /api/product-images     - Get all product images")
-    print("  GET    /api/reviews            - Get all reviews")
-    print("  GET    /api/orders             - Get all orders")
-    print("  GET    /api/order-items        - Get all order items")
-    print("  GET    /api/payments           - Get all payments")
-    print("=" * 50)
-    print("Each endpoint supports: GET, POST, PUT, DELETE")
-    print("=" * 50)
-    
-    app.run(host='0.0.0.0', port=5000, debug=True)
-
+    app.run(debug=True)
